@@ -4,10 +4,12 @@ export type FetchFn = typeof fetch;
 export type WebSocketCl = typeof WebSocket;
 export const MJBot = "936929561302675456";
 export const NijiBot = "1022952195194359889";
+export const IFSBot = "1090660574196674713";
+
 export interface MJConfig {
   ChannelId: string;
   SalaiToken: string;
-  BotId: typeof MJBot | typeof NijiBot;
+  BotId: typeof MJBot | typeof IFSBot | typeof NijiBot;
   Debug: boolean;
   Limit: number;
   MaxWait: number;
@@ -27,7 +29,7 @@ export interface MJConfigParam {
   SalaiToken: string; //DISCORD_TOKEN
   ChannelId?: string; //DISCORD_CHANNEL_ID
   ServerId?: string; //DISCORD_SERVER_ID
-  BotId?: typeof MJBot | typeof NijiBot; //DISCORD_BOT_ID MJBot OR NijiBot
+  BotId?:  typeof MJBot | typeof IFSBot | typeof NijiBot; //DISCORD_BOT_ID MJBot OR NijiBot
   Debug?: boolean; // print log
   ApiInterval?: number; //ApiInterval request api interval
   Limit?: number; //Limit of get message list
@@ -46,6 +48,23 @@ export interface MJConfigParam {
 export const DefaultMJConfig: MJConfig = {
   BotId: MJBot,
   ChannelId: "1077800642086703114",
+  SalaiToken: "",
+  ApiInterval: 350,
+  SessionId: "8bb7f5b79c7a49f7d0824ab4b8773a81",
+  Debug: false,
+  Limit: 50,
+  Ws: true,
+  MaxWait: 200,
+  ImageProxy: "",
+  DiscordBaseUrl: "https://discord.com",
+  WsBaseUrl: "wss://gateway.discord.gg/?encoding=json&v=9",
+  fetch: fetch,
+  WebSocket: WebSocket,
+};
+
+export const DefaultIFSConfig: MJConfig = {
+  BotId: IFSBot,
+  ChannelId: "1183359810947784748",
   SalaiToken: "",
   ApiInterval: 350,
   SessionId: "8bb7f5b79c7a49f7d0824ab4b8773a81",

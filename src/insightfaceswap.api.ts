@@ -11,10 +11,10 @@ import {
 } from "./interfaces";
 
 import { nextNonce, sleep } from "./utils";
-import { Command } from "./command";
+import { Command } from "./commandsIFS";
 import async from "async";
 
-export class MidjourneyApi extends Command {
+export class InsightFaceSwapApi extends Command {
   UpId = Date.now() % 10; // upload id
   constructor(public config: MJConfig) {
     super(config);
@@ -77,11 +77,6 @@ export class MidjourneyApi extends Command {
     }
   };
 
-  async ImagineApi(prompt: string, nonce: string = nextNonce()) {
-    const payload = await this.imaginePayload(prompt, nonce);
-    return this.safeIteractions(payload);
-  }
-
   async saveIdApi(idname: string, image: DiscordImage, nonce: string = nextNonce()) {
     const payload = await this.saveIdPayload(idname, image, nonce);
     return this.safeIteractions(payload);
@@ -92,15 +87,6 @@ export class MidjourneyApi extends Command {
     return this.safeIteractions(payload);
   }
 
-  async SwitchRemixApi(nonce: string = nextNonce()) {
-    const payload = await this.PreferPayload(nonce);
-    return this.safeIteractions(payload);
-  }
-
-  async ShortenApi(prompt: string, nonce: string = nextNonce()) {
-    const payload = await this.shortenPayload(prompt, nonce);
-    return this.safeIteractions(payload);
-  }
 
   async VariationApi({
     index,
@@ -319,26 +305,6 @@ export class MidjourneyApi extends Command {
     });
   }
 
-  async InfoApi(nonce?: string) {
-    const payload = await this.infoPayload(nonce);
-    return this.safeIteractions(payload);
-  }
-
-  async SettingsApi(nonce?: string) {
-    const payload = await this.settingsPayload(nonce);
-    return this.safeIteractions(payload);
-  }
-
-  async FastApi(nonce?: string) {
-    const payload = await this.fastPayload(nonce);
-    return this.safeIteractions(payload);
-  }
-
-  async RelaxApi(nonce?: string) {
-    const payload = await this.relaxPayload(nonce);
-    return this.safeIteractions(payload);
-  }
-
   /**
    *
    * @param fileUrl http file path
@@ -440,10 +406,6 @@ export class MidjourneyApi extends Command {
     }
   }
 
-  async DescribeApi(image: DiscordImage, nonce?: string) {
-    const payload = await this.describePayload(image, nonce);
-    return this.safeIteractions(payload);
-  }
   async upImageApi(image: DiscordImage, nonce?: string) {
     const { SalaiToken, DiscordBaseUrl, ChannelId, fetch } = this.config;
     const payload = {

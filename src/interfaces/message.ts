@@ -17,10 +17,13 @@ export type OnModal = (nonce: string, id: string) => Promise<string>;
 export interface WaitMjEvent {
   nonce: string;
   prompt?: string;
+  imageUri?: string;
+  idname?: string;
   id?: string;
   del?: boolean; // is delete message
   onmodal?: OnModal;
 }
+
 export interface MJEmit {
   error?: Error;
   message?: MJMessage;

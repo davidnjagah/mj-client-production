@@ -1,24 +1,8 @@
 import { DiscordImage, MJConfig } from "./interfaces";
 
 export const Commands = [
-  "ask",
-  "blend",
-  "describe",
-  "fast",
-  "help",
-  "imagine",
-  "info",
-  "prefer",
-  "private",
-  "public",
-  "relax",
-  "settings",
-  "show",
-  "stealth",
-  "shorten",
-  "subscribe",
   "saveid",
-  "swapid,"
+  "swapid",
 ] as const;
 export type CommandName = (typeof Commands)[number];
 function getCommandName(name: string): CommandName | undefined {
@@ -85,16 +69,7 @@ export class Command {
     }
     throw new Error(`Failed to get application_commands for command ${name}`);
   }
-  async imaginePayload(prompt: string, nonce?: string) {
-    const data = await this.commandData("imagine", [
-      {
-        type: 3,
-        name: "prompt",
-        value: prompt,
-      },
-    ]);
-    return this.data2Paylod(data, nonce);
-  }
+  
   async saveIdPayload( idname: string, image: DiscordImage, nonce?: string) {
     const data = await this.commandData("saveid", [
       {
@@ -157,7 +132,7 @@ export class Command {
   }
 
   async swapIdPayload( idname: string, image: DiscordImage, nonce?: string) {
-    const data = await this.commandData("saveid", [
+    const data = await this.commandData("swapid", [
       {
         type: 3,
         name: "idname",
@@ -208,74 +183,19 @@ export class Command {
       name_localized: "swapid"
     };
 
+
+    //Add the attachments to the payload
     return this.data2Paylod({
-      ...data,
-      application_command,
-  }, nonce);
+        ...data,
+        application_command,
+    }, nonce);
 
-  }
-  async PreferPayload(nonce?: string) {
-    const data = await this.commandData("prefer", [
-      {
-        type: 1,
-        name: "remix",
-        options: [],
-      },
-    ]);
-    return this.data2Paylod(data, nonce);
-  }
-
-  async shortenPayload(prompt: string, nonce?: string) {
-    const data = await this.commandData("shorten", [
-      {
-        type: 3,
-        name: "prompt",
-        value: prompt,
-      },
-    ]);
-    return this.data2Paylod(data, nonce);
-  }
-  async infoPayload(nonce?: string) {
-    const data = await this.commandData("info");
-    return this.data2Paylod(data, nonce);
-  }
-  async fastPayload(nonce?: string) {
-    const data = await this.commandData("fast");
-    return this.data2Paylod(data, nonce);
-  }
-  async relaxPayload(nonce?: string) {
-    const data = await this.commandData("relax");
-    return this.data2Paylod(data, nonce);
-  }
-  async settingsPayload(nonce?: string) {
-    const data = await this.commandData("settings");
-    return this.data2Paylod(data, nonce);
-  }
-  async describePayload(image: DiscordImage, nonce?: string) {
-    const data = await this.commandData(
-      "describe",
-      [
-        {
-          type: 11,
-          name: "image",
-          value: image.id,
-        },
-      ],
-      [
-        {
-          id: <string>image.id,
-          filename: image.filename,
-          uploaded_filename: image.upload_filename,
-        },
-      ]
-    );
-    return this.data2Paylod(data, nonce);
   }
 
   protected async commandData(
     name: CommandName,
     options: any[] = [],
-    attachments: any[] = []
+    attachments: any[] = [],
   ) {
     const command = await this.cacheCommand(name);
     const data = {
@@ -300,6 +220,7 @@ export class Command {
       nonce,
       data,
     };
+    console.log("This is the payload ", JSON.stringify(payload))
     return payload;
   }
 }

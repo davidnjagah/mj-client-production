@@ -47,6 +47,7 @@
   "dependencies": {
     "@huggingface/inference": "^2.5.0",
     "async": "^3.2.4",
+    "discord.js": "^14.14.1",
     "isomorphic-ws": "^5.0.0",
     "semiver": "^1.1.0",
     "snowyflake": "^2.0.0",

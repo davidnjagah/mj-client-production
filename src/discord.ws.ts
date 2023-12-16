@@ -133,6 +133,7 @@ export class WsMessage {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
   private async messageCreate(message: any) {
+    //this.log("This is the message from messageCreate: ", message);
     const { embeds, id, nonce, components, attachments } = message;
     if (nonce) {
       // this.log("waiting start image or info or error");
@@ -185,7 +186,7 @@ export class WsMessage {
   }
 
   private messageUpdate(message: any) {
-    // this.log("messageUpdate", message);
+    //this.log("messageUpdate: ", message);
     const {
       content,
       embeds,
@@ -310,7 +311,7 @@ export class WsMessage {
       this.log(data);
     }
     this.log("event", msg.t);
-    // console.log(data);
+    //console.log(data);
     switch (msg.t) {
       case "READY":
         this.emitSystem("ready", message.user);
@@ -618,11 +619,15 @@ export class WsMessage {
   async waitImageMessage({
     nonce,
     prompt,
+    imageUri,
+    idname,
     onmodal,
     messageId,
     loading,
   }: {
     nonce: string;
+    imageUri?: string;
+    idname?: string;
     prompt?: string;
     messageId?: string;
     onmodal?: OnModal;
@@ -644,6 +649,7 @@ export class WsMessage {
         }
         message && loading && loading(message.uri, message.progress || "");
       };
+      if (prompt) {
       this.waitMjEvents.set(nonce, {
         nonce,
         prompt,
@@ -663,6 +669,28 @@ export class WsMessage {
           return nonce;
         },
       });
+      }
+      if (idname ) {
+        this.waitMjEvents.set(nonce, {
+          nonce,
+          idname,
+          onmodal: async (oldnonce, id) => {
+            if (onmodal === undefined) {
+              // reject(new Error("onmodal is not defined"))
+              return "";
+            }
+            var nonce = await onmodal(oldnonce, id);
+            if (nonce === "") {
+              // reject(new Error("onmodal return empty nonce"))
+              return "";
+            }
+            this.removeWaitMjEvent(oldnonce);
+            this.waitMjEvents.set(nonce, { nonce });
+            this.onceImage(nonce, handleImageMessage);
+            return nonce;
+          },
+        });
+        }
       this.onceImage(nonce, handleImageMessage);
     });
   }
