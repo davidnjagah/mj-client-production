@@ -1,3 +1,5 @@
+# midjourney-client
+
 Node.js client for the unofficial MidJourney api.
 
 English / [中文文档](README_zh.md)
@@ -261,6 +263,3 @@ If you find it valuable and would like to show your support, any donations would
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=erictik/midjourney-client&type=Date)](https://star-history.com/#erictik/midjourney-client&Date)
-#   m i d j o u r n e y - a p i 
- 
- 
