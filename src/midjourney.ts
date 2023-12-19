@@ -16,7 +16,6 @@ import {
   base64ToBlob,
 } from "./utils";
 import { WsMessage } from "./discord.ws";
-import { faceSwap } from "./face.swap";
 export class Midjourney extends MidjourneyMessage {
   public config: MJConfig;
   private wsClient?: WsMessage;
@@ -99,17 +98,28 @@ export class Midjourney extends MidjourneyMessage {
 
     const nonce = nextNonce();
     const DcImage = await this.MJApi.UploadImageByUri(imageUri);
-    this.log(`SaveId`, idname, DcImage, "nonce", nonce);
-    const httpStatus = await this.IFSApi.saveIdApi(idname, DcImage, nonce);
+    const nonceid = nonce.split(' ')[0];
+    const uniqueIdName = idname+nonceid;
+    console.log("This is nonceid", nonceid);
+    const id = `${Math.trunc(Math.random()*10000000000)}`;
+    this.log(`SaveId`, id, DcImage, "nonce", nonce);
+    const saveIdRes = `idname ${id} created`
+    //here is where the idname will be created by merging the user id
+    //with the nonce. I can tweak the waitimagemessage to wait for that.
+    //then i can take the saveid and pass it to swapid. {this is what
+    //was causing the midjourney bot to not continue}. For now i'll
+    //hardcode the idname to test.
+    
+    const httpStatus = await this.IFSApi.saveIdApi(id, DcImage, nonce);
     //console.log(httpStatus);
     if (httpStatus !== 204) {
       throw new Error(`savedIdApi failed with status ${httpStatus}`);
     }
     if (this.wsClient) {
-      return await this.wsClient.waitImageMessage({ nonce, imageUri, loading, idname });
+      return await this.wsClient.waitSaveIdMessage({ nonce, saveidres: saveIdRes, loading });
     } else {
       this.log(`await generate image`);
-      const msg = await this.WaitMessage(imageUri, loading);
+      const msg = await this.WaitMessage(saveIdRes, loading);
       this.log(`image generated`, imageUri);
       return msg;
     }
@@ -137,6 +147,10 @@ export class Midjourney extends MidjourneyMessage {
     console.log(imageUri);
     const DcImage = await this.MJApi.UploadImageByUri(imageUri);
     this.log(`SwapId`, idname, DcImage, "nonce", nonce);
+    //the wait image message will be different with swap id because
+    //i might want to get more than one image and for that
+    //i'll have to use an extra unique varibale to check. (can use the nonce)
+    //i dont need to check for loading just saveid and filename
     const httpStatus = await this.IFSApi.swapIdApi(idname, DcImage, nonce);
     //console.log(httpStatus);
     if (httpStatus !== 204) {
@@ -146,7 +160,7 @@ export class Midjourney extends MidjourneyMessage {
       return await this.wsClient.waitImageMessage({ nonce, loading, idname });
     } else {
       this.log(`await generate image`);
-      const msg = await this.WaitMessage(imageUri, loading);
+      const msg = await this.WaitSwapIdMessage(imageUri, loading);
       this.log(`image generated`, imageUri);
       return msg;
     }
@@ -453,23 +467,6 @@ export class Midjourney extends MidjourneyMessage {
       flags,
       loading,
     });
-  }
-
-  async FaceSwap(target: string, source: string) {
-    const wsClient = await this.getWsClient();
-    const app = new faceSwap(this.config.HuggingFaceToken);
-    const Target = await (await this.config.fetch(target)).blob();
-    const Source = await (await this.config.fetch(source)).blob();
-    const res = await app.changeFace(Target, Source);
-    this.log(res[0]);
-    const blob = await base64ToBlob(res[0] as string);
-    const DcImage = await this.MJApi.UploadImageByBole(blob);
-    const nonce = nextNonce();
-    const httpStatus = await this.MJApi.DescribeApi(DcImage, nonce);
-    if (httpStatus !== 204) {
-      throw new Error(`DescribeApi failed with status ${httpStatus}`);
-    }
-    return wsClient.waitDescribe(nonce);
   }
 
   Close() {

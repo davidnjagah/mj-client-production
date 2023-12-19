@@ -3,6 +3,7 @@ import { DiscordImage, MJConfig } from "./interfaces";
 export const Commands = [
   "saveid",
   "swapid",
+  "delid",
 ] as const;
 export type CommandName = (typeof Commands)[number];
 function getCommandName(name: string): CommandName | undefined {
@@ -181,6 +182,47 @@ export class Command {
       integration_types: [0],
       description_localized: "Apply Identity Feature to Target Image, use comma splitter for multiple identities",
       name_localized: "swapid"
+    };
+
+
+    //Add the attachments to the payload
+    return this.data2Paylod({
+        ...data,
+        application_command,
+    }, nonce);
+
+  }
+
+  async delIdPayload( idname: string, nonce?: string) {
+    const data = await this.commandData("delid", [
+      {
+        type: 3,
+        name: "idname",
+        value: idname,
+      }
+    ]
+    );
+
+  const application_command = {
+      id: "1097020382013300907",
+      type: 1,
+      application_id: "1090660574196674713",
+      version: "1097020382013300910",
+      name: "delid",
+      description: "Delete specific idname",
+      options: [
+        {
+          type: 3,
+          name: "idname",
+          description: "idname to delete",
+          required: true,
+          description_localized: "idname to delete",
+          name_localized: "idname"
+        }
+      ],
+      integration_types: [0],
+      description_localized: "Delete specific idname",
+      name_localized: "delid"
     };
 
 

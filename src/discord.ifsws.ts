@@ -1,17 +1,16 @@
+import { InsightFaceSwapApi } from "./insightfaceswap.api";
 import {
   MJConfig,
-  WaitMjEvent,
-  MJMessage,
   LoadingHandler,
-  MJEmit,
   MJInfo,
   MJSettings,
-  MJOptions,
   OnModal,
   MJShorten,
   MJDescribe,
+  IFSMessage,
+  IFSEmit,
+  WaitIFSEvent,
 } from "./interfaces";
-import { MidjourneyApi } from "./midjourney.api";
 import {
   content2progress,
   content2prompt,
@@ -21,19 +20,18 @@ import {
   nextNonce,
   uriToHash,
 } from "./utils";
-import { VerifyHuman } from "./verify.human";
 import WebSocket from "isomorphic-ws";
-export class WsMessage {
+export class IFSWsMessage {
   ws: WebSocket;
   private closed = false;
   private event: Array<{ event: string; callback: (message: any) => void }> =
     [];
-  private waitMjEvents: Map<string, WaitMjEvent> = new Map();
+  private waitIFSEvents: Map<string, WaitIFSEvent> = new Map();
   private skipMessageId: string[] = [];
   private reconnectTime: boolean[] = [];
   private heartbeatInterval = 0;
   public UserId = "";
-  constructor(public config: MJConfig, public MJApi: MidjourneyApi) {
+  constructor(public config: MJConfig, public MJApi: InsightFaceSwapApi) {
     this.ws = new this.config.WebSocket(this.config.WsBaseUrl);
     this.ws.addEventListener("open", this.open.bind(this));
     this.onSystem("messageCreate", this.onMessageCreate.bind(this));
@@ -120,7 +118,7 @@ export class WsMessage {
           token: this.config.SalaiToken,
           capabilities: 8189,
           properties: {
-            os: "Mac OS X",
+            os: "Windows",
             browser: "Chrome",
             device: "",
           },
@@ -138,44 +136,18 @@ export class WsMessage {
     if (nonce) {
       // this.log("waiting start image or info or error");
       this.updateMjEventIdByNonce(id, nonce);
-      if (embeds?.[0]) {
-        const { color, description, title } = embeds[0];
-        this.log("embeds[0].color", color);
-        switch (color) {
-          case 16711680: //error
-            if (title == "Action needed to continue") {
-              return this.continue(message);
-            } else if (title == "Pending mod message") {
-              return this.continue(message);
-            }
-
-            const error = new Error(description);
-            this.EventError(id, error);
-            return;
-
-          case 16776960: //warning
-            console.warn(description);
-            break;
-
-          default:
-            if (
-              title?.includes("continue") &&
-              description?.includes("verify you're human")
-            ) {
-              //verify human
-              await this.verifyHuman(message);
-              return;
-            }
-
-            if (title?.includes("Invalid")) {
-              //error
-              const error = new Error(description);
-              this.EventError(id, error);
-              return;
-            }
-        }
-      }
-      
+      console.log("This is MjEvents", this.waitIFSEvents)
+      console.log("This is this", this);
+      console.log("This is content in MessageCreate", content);
+      // if (content) {
+      // this.log("This is the content of MessageCreate", content);
+      // const getcontent = this.waitIFSEvents.get(id);
+      // this.log("This is the getcontent of MessageCreate", getcontent?.saveidres);
+      //     if (content?.includes("idname") && content?.includes("created") || content?.includes("updated")) {
+      //       this.done(message);
+      //       return;
+      //     }
+      // }
     }
 
     if (!nonce && attachments?.length > 0 && components?.length > 0) {
@@ -294,9 +266,9 @@ export class WsMessage {
   private async onMessageDelete(message: any) {
     const { channel_id, id } = message;
     if (channel_id !== this.config.ChannelId) return;
-    for (const [key, value] of this.waitMjEvents.entries()) {
+    for (const [key, value] of this.waitIFSEvents.entries()) {
       if (value.id === id) {
-        this.waitMjEvents.set(key, { ...value, del: true });
+        this.waitIFSEvents.set(key, { ...value, del: true });
       }
     }
   }
@@ -319,6 +291,38 @@ export class WsMessage {
         break;
       case "MESSAGE_CREATE":
         this.emitSystem("messageCreate", message);
+        if (message.content) {
+        this.log("This is the message MessageCreate", message);
+          this.waitIFSEvents.forEach((value, index) =>{
+          if ( message.content === `idname ${value.rid} created`) {
+            console.log("Has been found", value.rid);
+            //this.done(message);
+            //this.waitSaveIdMessage({nonce: value.nonce, rid: value.rid});
+            // message.content?.includes("idname") && 
+            // message.content?.includes(value.rid) && 
+            // message.content?.includes("created") || 
+            // message.content?.includes("updated")
+            const event = this.getEventByNonce(value.nonce);
+            if (!event) {
+              return;
+            }
+            console.log("This is the event", event);
+            const IFSmsg: IFSMessage = {
+              id: value.id,
+              rid: value.rid,
+              flags: message.flags,
+              content: message.content
+            };
+            const eventMsg: IFSEmit = {
+              message: IFSmsg,
+            };
+            console.log("This is the IFSmsg", IFSmsg);
+            this.emitImage(event.nonce, eventMsg);
+            this.removeEvent(event.nonce);
+            this.removeWaitIFSEvent(value.nonce)
+          }
+        })
+        }
         break;
       case "MESSAGE_UPDATE":
         this.emitSystem("messageUpdate", message);
@@ -358,43 +362,13 @@ export class WsMessage {
       }
     }
   }
-  private async verifyHuman(message: any) {
-    const { HuggingFaceToken } = this.config;
-    if (HuggingFaceToken === "" || !HuggingFaceToken) {
-      this.log("HuggingFaceToken is empty");
-      return;
-    }
-    const { embeds, components, id, flags, nonce } = message;
-    const uri = embeds[0].image.url;
-    const categories = components[0].components;
-    const classify = categories.map((c: any) => c.label);
-    const verifyClient = new VerifyHuman(this.config);
-    const category = await verifyClient.verify(uri, classify);
-    if (category) {
-      const custom_id = categories.find(
-        (c: any) => c.label === category
-      ).custom_id;
-      var newnonce = nextNonce();
-      const httpStatus = await this.MJApi.CustomApi({
-        msgId: id,
-        customId: custom_id,
-        flags,
-        nonce: newnonce,
-      });
-      if (httpStatus == 204) {
-        this.on(newnonce, (data) => {
-          this.emit(nonce, data);
-        });
-      }
-      this.log("verifyHumanApi", httpStatus, custom_id, message.id);
-    }
-  }
+
   private EventError(id: string, error: Error) {
     const event = this.getEventById(id);
     if (!event) {
       return;
     }
-    const eventMsg: MJEmit = {
+    const eventMsg: IFSEmit = {
       error,
     };
     this.emit(event.nonce, eventMsg);
@@ -402,27 +376,39 @@ export class WsMessage {
 
   private done(message: any) {
     const { content, id, attachments, components, flags } = message;
+
+    if(attachments?.length > 0){
     const { url, proxy_url, width, height } = attachments[0];
     let uri = url;
     if (this.config.ImageProxy !== "") {
       uri = uri.replace("https://cdn.discordapp.com/", this.config.ImageProxy);
     }
 
-    const MJmsg: MJMessage = {
+    const IFSmsg: IFSMessage = {
       id,
+      rid: content,
       flags,
       content,
       hash: uriToHash(url),
       progress: "done",
-      uri,
       proxy_url,
-      options: formatOptions(components),
-      width,
-      height,
+      options: formatOptions(components)
     };
-    this.filterMessages(MJmsg);
+    this.filterMessages(IFSmsg);
     return;
   }
+
+  const IFSmsg: IFSMessage = {
+    id,
+    flags,
+    rid: content,
+    content,
+    progress: "done"
+  };
+  this.filterMessages(IFSmsg);
+  return;
+  }
+
   private processingImage(message: any) {
     const { content, id, attachments, flags } = message;
     if (!content) {
@@ -442,36 +428,45 @@ export class WsMessage {
     if (this.config.ImageProxy !== "") {
       uri = uri.replace("https://cdn.discordapp.com/", this.config.ImageProxy);
     }
-    const MJmsg: MJMessage = {
-      uri: uri,
+    const IFSmsg: IFSMessage = {
       proxy_url: attachments[0].proxy_url,
       content: content,
       flags: flags,
       progress: content2progress(content),
+      id: id,
+      rid: event.rid,
     };
-    const eventMsg: MJEmit = {
-      message: MJmsg,
+    const eventMsg: IFSEmit = {
+      message: IFSmsg,
     };
     this.emitImage(event.nonce, eventMsg);
   }
 
-  private async filterMessages(MJmsg: MJMessage) {
-    // delay 300ms for discord message delete
-    await this.timeout(300);
-    const event = this.getEventByContent(MJmsg.content);
+  private async filterMessages(IFSmsg: IFSMessage) {
+    //delay 300ms for discord message delete
+    //await this.timeout(300);
+    this.waitIFSEvents.forEach((value, index) => {
+      console.log(`[SaveID: '${value.rid}']`);
+    if (
+      IFSmsg.content && 
+      IFSmsg.content.includes(`[SaveID: '${value.rid}']`)
+      ) {
+    const event = this.getEventByNonce(value.nonce);
     if (!event) {
-      this.log("FilterMessages not found", MJmsg, this.waitMjEvents);
+      this.log("FilterMessages not found", IFSmsg, this.waitIFSEvents);
       return;
     }
-    const eventMsg: MJEmit = {
-      message: MJmsg,
+    const eventMsg: IFSEmit = {
+      message: IFSmsg,
     };
     this.emitImage(event.nonce, eventMsg);
+  }
+  });
   }
   private getEventByContent(content: string) {
     const prompt = content2prompt(content);
     //fist del message
-    for (const [key, value] of this.waitMjEvents.entries()) {
+    for (const [key, value] of this.waitIFSEvents.entries()) {
       if (
         value.del === true &&
         prompt === content2prompt(value.prompt as string)
@@ -480,7 +475,7 @@ export class WsMessage {
       }
     }
 
-    for (const [key, value] of this.waitMjEvents.entries()) {
+    for (const [key, value] of this.waitIFSEvents.entries()) {
       if (prompt === content2prompt(value.prompt as string)) {
         return value;
       }
@@ -488,14 +483,14 @@ export class WsMessage {
   }
 
   private getEventById(id: string) {
-    for (const [key, value] of this.waitMjEvents.entries()) {
+    for (const [key, value] of this.waitIFSEvents.entries()) {
       if (value.id === id) {
         return value;
       }
     }
   }
   private getEventByNonce(nonce: string) {
-    for (const [key, value] of this.waitMjEvents.entries()) {
+    for (const [key, value] of this.waitIFSEvents.entries()) {
       if (value.nonce === nonce) {
         return value;
       }
@@ -503,10 +498,10 @@ export class WsMessage {
   }
   private updateMjEventIdByNonce(id: string, nonce: string) {
     if (nonce === "" || id === "") return;
-    let event = this.waitMjEvents.get(nonce);
+    let event = this.waitIFSEvents.get(nonce);
     if (!event) return;
     event.id = id;
-    this.log("updateMjEventIdByNonce success", this.waitMjEvents.get(nonce));
+    this.log("updateMjEventIdByNonce success", this.waitIFSEvents.get(nonce));
   }
 
   protected async log(...args: any[]) {
@@ -518,7 +513,7 @@ export class WsMessage {
       .filter((e) => e.event === event)
       .forEach((e) => e.callback(message));
   }
-  private emitImage(type: string, message: MJEmit) {
+  private emitImage(type: string, message: IFSEmit) {
     this.emit(type, message);
   }
   //FIXME: emitMJ rename
@@ -551,7 +546,7 @@ export class WsMessage {
       | "messageDelete"
       | "interactionSuccess"
       | "interactionCreate",
-    message: MJEmit
+    message: IFSEmit
   ) {
     this.emit(type, message);
   }
@@ -589,12 +584,12 @@ export class WsMessage {
   onceMJ(nonce: string, callback: (data: any) => void) {
     const once = (message: any) => {
       this.remove(nonce, once);
-      //FIXME: removeWaitMjEvent
-      this.removeWaitMjEvent(nonce);
+      //FIXME: removeWaitIFSEvent
+      this.removeWaitIFSEvent(nonce);
       callback(message);
     };
     //FIXME: addWaitMjEvent
-    this.waitMjEvents.set(nonce, { nonce });
+    this.waitIFSEvents.set(nonce, { nonce, rid: "" });
     this.event.push({ event: nonce, callback: once });
   }
   private removeSkipMessageId(messageId: string) {
@@ -603,11 +598,11 @@ export class WsMessage {
       this.skipMessageId.splice(index, 1);
     }
   }
-  private removeWaitMjEvent(nonce: string) {
-    this.waitMjEvents.delete(nonce);
+  private removeWaitIFSEvent(nonce: string) {
+    this.waitIFSEvents.delete(nonce);
   }
-  onceImage(nonce: string, callback: (data: MJEmit) => void) {
-    const once = (data: MJEmit) => {
+  onceImage(nonce: string, callback: (data: IFSEmit) => void) {
+    const once = (data: IFSEmit) => {
       const { message, error } = data;
       if (error || (message && message.progress === "done")) {
         this.remove(nonce, once);
@@ -617,90 +612,32 @@ export class WsMessage {
     this.event.push({ event: nonce, callback: once });
   }
 
-  async waitImageMessage({
-    nonce,
-    prompt,
-    imageUri,
-    idname,
-    onmodal,
-    messageId,
-    loading,
-  }: {
-    nonce: string;
-    imageUri?: string;
-    idname?: string;
-    prompt?: string;
-    messageId?: string;
-    onmodal?: OnModal;
-    loading?: LoadingHandler;
-  }) {
-    if (messageId) this.skipMessageId.push(messageId);
-    return new Promise<MJMessage | null>((resolve, reject) => {
-      const handleImageMessage = ({ message, error }: MJEmit) => {
-        if (error) {
-          this.removeWaitMjEvent(nonce);
-          reject(error);
-          return;
-        }
-        if (message && message.progress === "done") {
-          this.removeWaitMjEvent(nonce);
-          messageId && this.removeSkipMessageId(messageId);
-          resolve(message);
-          return;
-        }
-        message && loading && loading(message.uri, message.progress || "");
-      };
-      if (prompt) {
-      console.log("This is this", this);
-      console.log("This is waitMjEvents", this.waitMjEvents);
-      this.waitMjEvents.set(nonce, {
-        nonce,
-        prompt,
-        onmodal: async (oldnonce, id) => {
-          if (onmodal === undefined) {
-            // reject(new Error("onmodal is not defined"))
-            return "";
-          }
-          var nonce = await onmodal(oldnonce, id);
-          if (nonce === "") {
-            // reject(new Error("onmodal return empty nonce"))
-            return "";
-          }
-          this.removeWaitMjEvent(oldnonce);
-          this.waitMjEvents.set(nonce, { nonce });
-          this.onceImage(nonce, handleImageMessage);
-          return nonce;
-        },
-      });
+  onceSaveid(nonce: string, saveidres: string, callback: (data: IFSEmit) => void) {
+    const once = (data: IFSEmit) => {
+      const { message, error } = data;
+      if (error || (message && message.content == saveidres)) {
+        this.remove(nonce, once);
       }
-      if (idname ) {
-        this.waitMjEvents.set(nonce, {
-          nonce,
-          idname,
-          onmodal: async (oldnonce, id) => {
-            if (onmodal === undefined) {
-              // reject(new Error("onmodal is not defined"))
-              return "";
-            }
-            var nonce = await onmodal(oldnonce, id);
-            if (nonce === "") {
-              // reject(new Error("onmodal return empty nonce"))
-              return "";
-            }
-            this.removeWaitMjEvent(oldnonce);
-            this.waitMjEvents.set(nonce, { nonce });
-            this.onceImage(nonce, handleImageMessage);
-            return nonce;
-          },
-        });
-        }
-      this.onceImage(nonce, handleImageMessage);
-    });
+      callback(data);
+    };
+    this.event.push({ event: nonce, callback: once });
   }
+
+  onceSwapid(nonce: string, rid: string, callback: (data: IFSEmit) => void) {
+    const once = (data: IFSEmit) => {
+      const { message, error } = data;
+      if (error || (message && message.content.includes(`[SaveID: '${rid}']`))) {
+        this.remove(nonce, once);
+      }
+      callback(data);
+    };
+    this.event.push({ event: nonce, callback: once });
+  }
+
 
   async waitSaveIdMessage({
     nonce,
-    prompt,
+    rid,
     imageUri,
     saveidres,
     onmodal,
@@ -709,33 +646,32 @@ export class WsMessage {
   }: {
     nonce: string;
     imageUri?: string;
-    saveidres?: string;
-    prompt?: string;
+    saveidres: string;
+    rid: string;
     messageId?: string;
     onmodal?: OnModal;
     loading?: LoadingHandler;
   }) {
     if (messageId) this.skipMessageId.push(messageId);
-    return new Promise<MJMessage | null>((resolve, reject) => {
-      const handleSaveIdMessage = ({ message, error }: MJEmit) => {
+    return new Promise<IFSMessage | null>((resolve, reject) => {
+      const handleSaveIdMessage = ({ message, error }: IFSEmit) => {
         console.log("This is the message ", message);
         if (error) {
-          this.removeWaitMjEvent(nonce);
+          this.removeWaitIFSEvent(nonce);
           reject(error);
           return;
         }
-        if (message && message.progress === "done") {
-          this.removeWaitMjEvent(nonce);
-          messageId && this.removeSkipMessageId(messageId);
+        if (message && message.content === saveidres) {
+          console.log("The message has been found");
           resolve(message);
           return;
         }
-        message && loading && loading(message.uri, message.content || "");
+        message && loading && loading(message.rid, message.content || "");
       };
-      if (saveidres ) {
-        this.waitMjEvents.set(nonce, {
+      if (rid) {
+        this.waitIFSEvents.set(nonce, {
           nonce,
-          saveidres,
+          rid,
           onmodal: async (oldnonce, id) => {
             if (onmodal === undefined) {
               // reject(new Error("onmodal is not defined"))
@@ -746,16 +682,125 @@ export class WsMessage {
               // reject(new Error("onmodal return empty nonce"))
               return "";
             }
-            this.removeWaitMjEvent(oldnonce);
-            this.waitMjEvents.set(nonce, { nonce });
-            this.onceImage(nonce, handleSaveIdMessage);
+            this.removeWaitIFSEvent(oldnonce);
+            this.waitIFSEvents.set(nonce, { nonce, rid });
+            this.onceSaveid(nonce, saveidres, handleSaveIdMessage);
             return nonce;
           },
         });
         }
-      this.onceImage(nonce, handleSaveIdMessage);
+      this.onceSaveid(nonce, saveidres, handleSaveIdMessage);
     });
   }
+
+  async waitSwapIdMessage({
+    nonce,
+    rid,
+    onmodal,
+    messageId,
+    loading,
+  }: {
+    nonce: string;
+    rid: string;
+    messageId?: string;
+    onmodal?: OnModal;
+    loading?: LoadingHandler;
+  }) {
+    if (messageId) this.skipMessageId.push(messageId);
+    return new Promise<IFSMessage | null>((resolve, reject) => {
+      const handleSwapIdMessage = ({ message, error }: IFSEmit) => {
+        console.log("This is the message ", message);
+        if (error) {
+          this.removeWaitIFSEvent(nonce);
+          reject(error);
+          return;
+        }
+        if (message && message.content.includes(`[SaveID: '${rid}']`)) {
+          console.log("The message has been found");
+          resolve(message);
+          return;
+        }
+        message && loading && loading(message.rid, message.content || "");
+      };
+      if (rid) {
+        this.waitIFSEvents.set(nonce, {
+          nonce,
+          rid,
+          onmodal: async (oldnonce, id) => {
+            if (onmodal === undefined) {
+              // reject(new Error("onmodal is not defined"))
+              return "";
+            }
+            var nonce = await onmodal(oldnonce, id);
+            if (nonce === "") {
+              // reject(new Error("onmodal return empty nonce"))
+              return "";
+            }
+            this.removeWaitIFSEvent(oldnonce);
+            this.waitIFSEvents.set(nonce, { nonce, rid });
+            this.onceSwapid(nonce, rid, handleSwapIdMessage);
+            return nonce;
+          },
+        });
+        }
+      this.onceSwapid(nonce, rid, handleSwapIdMessage);
+    });
+  }
+
+  async waitDelIdMessage({
+    nonce,
+    rid,
+    onmodal,
+    messageId,
+    loading,
+  }: {
+    nonce: string;
+    rid: string;
+    messageId?: string;
+    onmodal?: OnModal;
+    loading?: LoadingHandler;
+  }) {
+    if (messageId) this.skipMessageId.push(messageId);
+    return new Promise<IFSMessage | null>((resolve, reject) => {
+      const handleDelIdMessage = ({ message, error }: IFSEmit) => {
+        console.log("This is the message ", message);
+        if (error) {
+          this.removeWaitIFSEvent(nonce);
+          reject(error);
+          return;
+        }
+        if (message && message.content === rid) {
+          console.log("The message has been found");
+          resolve(message);
+          return;
+        }
+        message && loading && loading(message.rid, message.content || "");
+      };
+      if (rid) {
+        this.waitIFSEvents.set(nonce, {
+          nonce,
+          rid,
+          onmodal: async (oldnonce, id) => {
+            if (onmodal === undefined) {
+              // reject(new Error("onmodal is not defined"))
+              return "";
+            }
+            var nonce = await onmodal(oldnonce, id);
+            if (nonce === "") {
+              // reject(new Error("onmodal return empty nonce"))
+              return "";
+            }
+            this.removeWaitIFSEvent(oldnonce);
+            this.waitIFSEvents.set(nonce, { nonce, rid });
+            this.onceSaveid(nonce, rid, handleDelIdMessage);
+            return nonce;
+          },
+        });
+        }
+      this.onceSaveid(nonce, rid, handleDelIdMessage);
+    });
+  }
+
   async waitDescribe(nonce: string) {
     return new Promise<MJDescribe | null>((resolve) => {
       this.onceMJ(nonce, (message) => {

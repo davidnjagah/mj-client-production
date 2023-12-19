@@ -87,6 +87,11 @@ export class InsightFaceSwapApi extends Command {
     return this.safeIteractions(payload);
   }
 
+  async delIdApi(idname: string, nonce: string = nextNonce()) {
+    const payload = await this.delIdPayload(idname, nonce);
+    return this.safeIteractions(payload);
+  }
+
 
   async VariationApi({
     index,

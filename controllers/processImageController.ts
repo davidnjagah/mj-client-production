@@ -1,5 +1,10 @@
+import { Request, Response, NextFunction } from 'express';
+
+// Handle image request
+// POST : api/processimage/imagegen
+// PROTECTED
 import "dotenv/config";
-import { IFS, IFSBot, Midjourney } from "../src";
+import { IFSBot, Midjourney } from "../src";
 import { sleep } from "../src/utils";
 /**
  *
@@ -18,16 +23,8 @@ async function main() {
     Ws: true,
   });
 
-  const clientIFS = new IFS({
-      ServerId: <string>process.env.SERVER_ID,
-      ChannelId: <string>process.env.CHANNEL_ID,
-      SalaiToken: <string>process.env.SALAI_TOKEN,
-      BotId: IFSBot, // IFSBot
-      Debug: true,
-  });
-
-  const savedimageUri = `https://utfs.io/f/6fec6712-9a9b-4484-8eeb-3301c7120896-mood6h.jpg`;
   const prompt = "an east african kenyan man who is a little bit buff with east african hair that is neatily shaven into a fade haircut and he has on a black business suit with black shirt and black tie.";
+  const imageUri = `https://utfs.io/f/6fec6712-9a9b-4484-8eeb-3301c7120896-mood6h.jpg`;
   const saveId = "david7";
   await client.Connect();
 
@@ -41,7 +38,7 @@ async function main() {
         return;
     }
 
-    console.log("Imagine response:", Imagine);
+    //console.log("Imagine response:", Imagine);
 
     const U1CustomID = Imagine.options?.find((o) => o.label === "U1")?.custom;
     if (!U1CustomID) {
@@ -59,45 +56,53 @@ async function main() {
         console.log("loading", uri, "progress", progress);
       },
     });
-    console.log(Upscale);
+    //console.log(Upscale);
 
     if (!Upscale) {
       console.log("No response from Upscale.");
       return;
     }
 
-      await clientIFS.Connect();
+    client.SaveId( saveId, imageUri, (uri) => {
+      console.log("loading123---", uri);
+    })
+    .then(function (msg) {
+      console.log("msg123", msg);
+    })
+    .catch(function(error) {
+      console.error("An error occurred: ", error);
+    });
 
-      const saveidmsg = await clientIFS.SaveId(saveId, savedimageUri, (uri) => {
-        console.log("loading123---", uri);
-      });
-  
-      if (!saveidmsg) {
-          console.log("No response returned from saveid.");
-          return;
-      }
-  
-      const swapidmsg = await clientIFS.SwapId( Upscale.uri, saveidmsg.rid,  (uri) => {
-        console.log("loading123---", uri);
-      })
-  
-      if (!swapidmsg) {
-        console.log("No response returned from saveid.");
-        return;
-      }
-  
-      console.log("This is the SwapId Message", swapidmsg);
-  
-      await clientIFS.delId(saveidmsg.rid)
-  
-      console.log("idname", saveidmsg.rid, "has been deleted" );
+    await sleep(3000);
+
+    const SwapId = await client.SwapId( saveId, Upscale.uri, (uri) => {
+      console.log("loading123---", uri);
+    })
+    .then(function (msg) {
+      console.log("msg123", msg);
+    })
+    .catch(function(error) {
+      console.error("An error occurred: ", error);
+    });
+
+    console.log("SwapId:", SwapId);
 }
-main()
-  .then(() => {
-    console.log("Done");
-    process.exit(0);
-  })
-  .catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
+
+const handleImageGen = (req: Request, res: Response, next: NextFunction) => {
+    // Uncomment the line below to log the request, if needed
+    console.log("This is the request", req);
+    main()
+    .then((value) => {
+        console.log("This is the value", value);
+        res.json(value);
+        //process.exit(0);
+    })
+    .catch((err) => {
+        console.error(err);
+        process.exit(1);
+    });
+
+    
+};
+
+export { handleImageGen };

@@ -4,11 +4,12 @@ import {
   MJMessage,
   MJConfig,
   MJConfigParam,
+  IFSMessage,
 } from "./interfaces";
 import { formatOptions, sleep } from "./utils";
 import async from "async";
 
-export class MidjourneyMessage {
+export class IFSDiscordMessage {
   public config: MJConfig;
   constructor(defaults: MJConfigParam) {
     const { SalaiToken } = defaults;
@@ -57,17 +58,15 @@ export class MidjourneyMessage {
   }
   async FilterMessages(
     timestamp: number,
-    prompt: string,
+    rid: string,
     loading?: LoadingHandler
   ) {
-    const seed = prompt.match(/\[(.*?)\]/)?.[1];
-    this.log(`seed:`, seed);
     const data = await this.safeRetrieveMessages(this.config.Limit);
     for (let i = 0; i < data.length; i++) {
       const item = data[i];
       if (
         item.author.id === this.config.BotId &&
-        item.content.includes(`${seed}`)
+        item.content.includes(`${rid}`)
       ) {
         const itemTimestamp = new Date(item.timestamp).getTime();
         if (itemTimestamp < timestamp) {
@@ -97,17 +96,15 @@ export class MidjourneyMessage {
         //finished
         const content = item.content.split("**")[1];
         const { proxy_url, width, height } = item.attachments[0];
-        const msg: MJMessage = {
+        const msg: IFSMessage = {
           content,
+          rid,
           id: item.id,
-          uri,
           proxy_url,
           flags: item.flags,
           hash: this.UriToHash(uri),
           progress: "done",
           options: formatOptions(item.components),
-          width,
-          height,
         };
         return msg;
       }
@@ -132,14 +129,14 @@ export class MidjourneyMessage {
     return uri.split("_").pop()?.split(".")[0] ?? "";
   }
 
-  async WaitMessage(
-    prompt: string,
+  async WaitIFSMessage(
+    rid: string,
     loading?: LoadingHandler,
     timestamp?: number
   ) {
     timestamp = timestamp ?? Date.now();
     for (let i = 0; i < this.config.MaxWait; i++) {
-      const msg = await this.FilterMessages(timestamp, prompt, loading);
+      const msg = await this.FilterMessages(timestamp, rid, loading);
       if (msg !== null) {
         return msg;
       }

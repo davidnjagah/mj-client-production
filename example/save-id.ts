@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { IFSBot, Midjourney } from "../src";
+import { IFSBot, IFS } from "../src";
 /**
  *
  * a simple example of how to use the blend
@@ -8,7 +8,7 @@ import { IFSBot, Midjourney } from "../src";
  * ```
  */
 async function main() {
-  const client = new Midjourney({
+  const client = new IFS({
     ServerId: <string>process.env.SERVER_ID,
     ChannelId: <string>process.env.CHANNEL_ID,
     SalaiToken: <string>process.env.SALAI_TOKEN,
@@ -22,13 +22,28 @@ async function main() {
     (uri: string, progress: string) => {
     console.log("loading", uri, "progress", progress);
     });
-  console.log({ msg });
+  console.log("This is the response for saveId", msg );
   if (!msg) {
     console.log("no message");
     return;
   }
+  return msg;
 }
-main().catch((err) => {
+main()
+.then(async (msg) => {
+  if(msg){
+    const client = new IFS({
+      ServerId: <string>process.env.SERVER_ID,
+      ChannelId: <string>process.env.CHANNEL_ID,
+      SalaiToken: <string>process.env.SALAI_TOKEN,
+      BotId: IFSBot, // IFSBot
+      Debug: true,
+    });
+    await client.Connect();
+    client.delId(msg.rid)
+  }
+})
+.catch((err) => {
   console.error(err);
   process.exit(1);
 });
