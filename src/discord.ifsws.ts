@@ -137,7 +137,7 @@ export class IFSWsMessage {
       // this.log("waiting start image or info or error");
       this.updateMjEventIdByNonce(id, nonce);
       console.log("This is MjEvents", this.waitIFSEvents)
-      console.log("This is this", this);
+      //console.log("This is this", this);
       console.log("This is content in MessageCreate", content);
       // if (content) {
       // this.log("This is the content of MessageCreate", content);

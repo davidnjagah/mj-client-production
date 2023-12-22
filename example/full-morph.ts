@@ -29,6 +29,7 @@ async function main() {
   const savedimageUri = `https://utfs.io/f/6fec6712-9a9b-4484-8eeb-3301c7120896-mood6h.jpg`;
   const prompt = "an east african kenyan man who is a little bit buff with east african hair that is neatily shaven into a fade haircut and he has on a black business suit with black shirt and black tie.";
   const saveId = "david7";
+  const amount = "1"
   await client.Connect();
 
     
@@ -43,13 +44,7 @@ async function main() {
 
     console.log("Imagine response:", Imagine);
 
-    const U1CustomID = Imagine.options?.find((o) => o.label === "U1")?.custom;
-    if (!U1CustomID) {
-      console.log("No U1 option found.");
-      return;
-    }
-
-    const Upscale = await client.Upscale({
+    const U1 = await client.Upscale({
       index: 1,
       msgId: <string>Imagine.id,
       hash: <string>Imagine.hash,
@@ -59,38 +54,72 @@ async function main() {
         console.log("loading", uri, "progress", progress);
       },
     });
-    console.log(Upscale);
 
-    if (!Upscale) {
+    const U2 = amount.includes("2") ? await client.Upscale({
+      index: 2,
+      msgId: <string>Imagine.id,
+      hash: <string>Imagine.hash,
+      flags: Imagine.flags,
+      content: Imagine.content,
+      loading: (uri: string, progress: string) => {
+        console.log("loading", uri, "progress", progress);
+      },
+    }) : null;
+
+    const U3 = amount.includes("3") ? await client.Upscale({
+      index: 3,
+      msgId: <string>Imagine.id,
+      hash: <string>Imagine.hash,
+      flags: Imagine.flags,
+      content: Imagine.content,
+      loading: (uri: string, progress: string) => {
+        console.log("loading", uri, "progress", progress);
+      },
+    }) : null;
+
+    const U4 = amount.includes("4") ? await client.Upscale({
+      index: 4,
+      msgId: <string>Imagine.id,
+      hash: <string>Imagine.hash,
+      flags: Imagine.flags,
+      content: Imagine.content,
+      loading: (uri: string, progress: string) => {
+        console.log("loading", uri, "progress", progress);
+      },
+    }) : null;
+
+    console.log(U1);
+
+    if (!U1) {
       console.log("No response from Upscale.");
       return;
     }
 
-      await clientIFS.Connect();
+    await clientIFS.Connect();
 
-      const saveidmsg = await clientIFS.SaveId(saveId, savedimageUri, (uri) => {
-        console.log("loading123---", uri);
-      });
-  
-      if (!saveidmsg) {
-          console.log("No response returned from saveid.");
-          return;
-      }
-  
-      const swapidmsg = await clientIFS.SwapId( Upscale.uri, saveidmsg.rid,  (uri) => {
-        console.log("loading123---", uri);
-      })
-  
-      if (!swapidmsg) {
+    const saveidmsg = await clientIFS.SaveId( savedimageUri, (uri) => {
+      console.log("loading123---", uri);
+    });
+
+    if (!saveidmsg) {
         console.log("No response returned from saveid.");
         return;
-      }
-  
-      console.log("This is the SwapId Message", swapidmsg);
-  
-      await clientIFS.delId(saveidmsg.rid)
-  
-      console.log("idname", saveidmsg.rid, "has been deleted" );
+    }
+
+    const swapidmsg = await clientIFS.SwapId( U1.uri, saveidmsg.rid,  (uri) => {
+      console.log("loading123---", uri);
+    })
+
+    if (!swapidmsg) {
+      console.log("No response returned from saveid.");
+      return;
+    }
+
+    console.log("This is the SwapId Message", swapidmsg);
+
+    await clientIFS.delId(saveidmsg.rid)
+
+    console.log("idname", saveidmsg.rid, "has been deleted" );
 }
 main()
   .then(() => {

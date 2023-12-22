@@ -6,7 +6,6 @@ import {
   MJConfigParam,
 } from "./interfaces";
 import { MidjourneyApi } from "./midjourney.api";
-import { InsightFaceSwapApi } from "./insightfaceswap.api";
 import { MidjourneyMessage } from "./discord.message";
 import {
   toRemixCustom,
@@ -20,7 +19,6 @@ export class Midjourney extends MidjourneyMessage {
   public config: MJConfig;
   private wsClient?: WsMessage;
   public MJApi: MidjourneyApi;
-  public IFSApi: InsightFaceSwapApi;
   constructor(defaults: MJConfigParam) {
     const { SalaiToken } = defaults;
     if (!SalaiToken) {
@@ -32,7 +30,6 @@ export class Midjourney extends MidjourneyMessage {
       ...defaults,
     };
     this.MJApi = new MidjourneyApi(this.config);
-    this.IFSApi = new InsightFaceSwapApi(this.config);
   }
   async Connect() {
     if (!this.config.Ws) {
@@ -88,84 +85,6 @@ export class Midjourney extends MidjourneyMessage {
     }
   }
 
-  async SaveId(idname: string, imageUri: string, loading?: LoadingHandler) {
-    if (!this.config.Ws) {
-      const seed = random(1000000000, 9999999999);
-      imageUri = `[${seed}] ${imageUri}`;
-    } else {
-      await this.getWsClient();
-    }
-
-    const nonce = nextNonce();
-    const DcImage = await this.MJApi.UploadImageByUri(imageUri);
-    const nonceid = nonce.split(' ')[0];
-    const uniqueIdName = idname+nonceid;
-    console.log("This is nonceid", nonceid);
-    const id = `${Math.trunc(Math.random()*10000000000)}`;
-    this.log(`SaveId`, id, DcImage, "nonce", nonce);
-    const saveIdRes = `idname ${id} created`
-    //here is where the idname will be created by merging the user id
-    //with the nonce. I can tweak the waitimagemessage to wait for that.
-    //then i can take the saveid and pass it to swapid. {this is what
-    //was causing the midjourney bot to not continue}. For now i'll
-    //hardcode the idname to test.
-    
-    const httpStatus = await this.IFSApi.saveIdApi(id, DcImage, nonce);
-    //console.log(httpStatus);
-    if (httpStatus !== 204) {
-      throw new Error(`savedIdApi failed with status ${httpStatus}`);
-    }
-    if (this.wsClient) {
-      return await this.wsClient.waitSaveIdMessage({ nonce, saveidres: saveIdRes, loading });
-    } else {
-      this.log(`await generate image`);
-      const msg = await this.WaitMessage(saveIdRes, loading);
-      this.log(`image generated`, imageUri);
-      return msg;
-    }
-  }
-
-  async SwapId(idname: string, imageUri: string, loading?: LoadingHandler) {
-    if (!this.config.Ws) {
-      const seed = random(1000000000, 9999999999);
-      imageUri = `[${seed}] ${imageUri}`;
-    } else {
-      await this.getWsClient();
-    }
-
-    const nonce = nextNonce();
-    const regex = /^(.*\.(png|jpg))/;
-    const match = imageUri.match(regex);
-
-    if (match && match[1]) {
-      // Return the part of the URL up to the .png or .jpg
-      imageUri = match[1];
-    } else {
-      // Return the original URL if no match is found (or if it doesn't end with .png)
-      imageUri = imageUri;
-    }
-    console.log(imageUri);
-    const DcImage = await this.MJApi.UploadImageByUri(imageUri);
-    this.log(`SwapId`, idname, DcImage, "nonce", nonce);
-    //the wait image message will be different with swap id because
-    //i might want to get more than one image and for that
-    //i'll have to use an extra unique varibale to check. (can use the nonce)
-    //i dont need to check for loading just saveid and filename
-    const httpStatus = await this.IFSApi.swapIdApi(idname, DcImage, nonce);
-    //console.log(httpStatus);
-    if (httpStatus !== 204) {
-      throw new Error(`swapIdApi failed with status ${httpStatus}`);
-    }
-    if (this.wsClient) {
-      return await this.wsClient.waitImageMessage({ nonce, loading, idname });
-    } else {
-      this.log(`await generate image`);
-      const msg = await this.WaitSwapIdMessage(imageUri, loading);
-      this.log(`image generated`, imageUri);
-      return msg;
-    }
-  }
-
   // check ws enabled && connect
   private async getWsClient() {
     if (!this.config.Ws) {
@@ -179,8 +98,6 @@ export class Midjourney extends MidjourneyMessage {
     }
     return this.wsClient;
   }
-
-
 
   async Settings() {
     const wsClient = await this.getWsClient();

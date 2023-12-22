@@ -18,7 +18,7 @@ async function main() {
   const imageUri = `https://media.discordapp.net/attachments/1183363774523121674/1183364229143740427/IMG_20231210_130000.jpg`;
   const saveId = "test1";
   await client.Connect();
-  const msg = await client.SaveId( saveId, imageUri, 
+  const msg = await client.SaveId(imageUri, 
     (uri: string, progress: string) => {
     console.log("loading", uri, "progress", progress);
     });

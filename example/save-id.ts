@@ -18,7 +18,7 @@ async function main() {
   const imageUri = `https://utfs.io/f/6fec6712-9a9b-4484-8eeb-3301c7120896-mood6h.jpg`;
   const saveId = "david6";
   await client.Connect();
-  const msg = await client.SaveId( saveId, imageUri, 
+  const msg = await client.SaveId( imageUri, 
     (uri: string, progress: string) => {
     console.log("loading", uri, "progress", progress);
     });

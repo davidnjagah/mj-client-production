@@ -651,7 +651,6 @@ export class WsMessage {
         message && loading && loading(message.uri, message.progress || "");
       };
       if (prompt) {
-      console.log("This is this", this);
       console.log("This is waitMjEvents", this.waitMjEvents);
       this.waitMjEvents.set(nonce, {
         nonce,

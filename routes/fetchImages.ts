@@ -4,6 +4,7 @@ import { handleImageGen } from '../controllers/processImageController';
 
 const router = Router();
 
+
 router.post('/', authMiddleware, handleImageGen);
 
 export default router;

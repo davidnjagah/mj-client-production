@@ -62,7 +62,7 @@ export class IFS extends IFSDiscordMessage  {
     return this;
   }
 
-  async SaveId(idname: string, imageUri: string, loading?: LoadingHandler){
+  async SaveId(imageUri: string, loading?: LoadingHandler){
     if (!this.config.Ws) {
       const seed = random(1000000000, 9999999999);
       imageUri = `[${seed}] ${imageUri}`;
@@ -78,11 +78,6 @@ export class IFS extends IFSDiscordMessage  {
     //const rid = '4997180084';
     this.log(`SaveId`, rid, DcImage, "nonce", nonce);
     const saveIdRes = `idname ${rid} created`
-    //here is where the idname will be created by merging the user id
-    //with the nonce. I can tweak the waitimagemessage to wait for that.
-    //then i can take the saveid and pass it to swapid. {this is what
-    //was causing the midjourney bot to not continue}. For now i'll
-    //hardcode the idname to test.
     
     const httpStatus = await this.IFSApi.saveIdApi(rid, DcImage, nonce);
     //console.log(httpStatus);
@@ -121,10 +116,7 @@ export class IFS extends IFSDiscordMessage  {
     console.log(imageUri);
     const DcImage = await this.MJApi.UploadImageByUri(imageUri);
     this.log(`SwapId`, rid, DcImage, "nonce", nonce);
-    //the wait image message will be different with swap id because
-    //i might want to get more than one image and for that
-    //i'll have to use an extra unique varibale to check. (can use the nonce)
-    //i dont need to check for loading just saveid and filename
+
     const httpStatus = await this.IFSApi.swapIdApi(rid, DcImage, nonce);
     //console.log(httpStatus);
     if (httpStatus !== 204) {
