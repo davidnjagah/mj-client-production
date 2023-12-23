@@ -1,10 +1,9 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import authMiddleware from './middleware/authMiddleware';
+import fetchImages from './routes/fetchImages';
+import checkRouter from './routes/checkRoute';
+import paystack from './routes/paystack';
 
-import { check } from './controllers/check';
-import { handleImageGen } from './controllers/processImageController';
-import { paystackWebhook } from './controllers/paystack-webhook';
 import { notFound, errorHandler } from './middleware/errorMiddleware';
 
 const app: Express = express();
@@ -14,9 +13,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors({ credentials: true, origin: "http://localhost:3000" }));
 
 
-app.use('/api/fetchimages', authMiddleware, handleImageGen);
-app.use('/api/webhook', paystackWebhook);
-app.use('/api/checkroute', check)
+app.use('/api/fetchimages', fetchImages);
+app.use('/api/webhook', paystack);
+app.use('/api/checkroute', checkRouter)
 
 app.use(notFound);
 app.use(errorHandler);
