@@ -1,18 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 
 // Handle image request
-// POST : api/processimage/imagegen
+// POST : api/fetchimages
 // PROTECTED
 import "dotenv/config";
 import { IFSBot, Midjourney, IFS } from "../src";
-import { sleep } from "../src/utils";
-/**
- *
- * a simple example of how to use the blend
- * ```
- * npx tsx example/full-morph.ts
- * ```
- */
+
 interface IncomingRequest {
  amount: string,
  imageUrl: string,
@@ -44,9 +37,6 @@ async function main(req: IncomingRequest) {
     Debug: true,
 });
 
-  // const prompt = "an east african kenyan man who is a little bit buff with east african hair that is neatily shaven into a fade haircut and he has on a black business suit with black shirt and black tie.";
-  // const savedimageUri = `https://utfs.io/f/6fec6712-9a9b-4484-8eeb-3301c7120896-mood6h.jpg`;
-  // const amount = "1 2 3 4";
     await client.Connect();
 
     
@@ -80,9 +70,7 @@ async function main(req: IncomingRequest) {
       loading: (uri: string, progress: string) => {
         console.log("loading", uri, "progress", progress);
       },
-    }) : {
-        proxy_url: ""
-      };
+    }) : null;
   
     const U3 = amount.includes("3") ? await client.Upscale({
       index: 3,
@@ -93,9 +81,7 @@ async function main(req: IncomingRequest) {
       loading: (uri: string, progress: string) => {
         console.log("loading", uri, "progress", progress);
       },
-    }) :{
-      proxy_url: ""
-    };
+    }) : null;
   
     const U4 = amount.includes("4") ? await client.Upscale({
       index: 4,
@@ -106,9 +92,7 @@ async function main(req: IncomingRequest) {
       loading: (uri: string, progress: string) => {
         console.log("loading", uri, "progress", progress);
       },
-    }) :{
-      proxy_url: ""
-    };
+    }) : null;
   
 
     if (!U1) {
@@ -126,63 +110,66 @@ async function main(req: IncomingRequest) {
 
     await clientIFS.Connect();
 
-    // const saveid = await clientIFS.SaveId( imageUrl, (uri) => {
-    //   console.log("loading123---", uri);
-    // });
+    const saveid = await clientIFS.SaveId( imageUrl, (uri) => {
+      console.log("loading123---", uri);
+    });
 
-    // if (!saveid) {
-    //     console.log("No response returned from saveid.");
-    //     return;
-    // }
+    if (!saveid) {
+        console.log("No response returned from saveid.");
+        return;
+    }
 
-    // const swapid1 = await clientIFS.SwapId( U1.uri, saveid.rid,  (uri) => {
-    //   console.log("loading123---", uri);
-    // })
+    const swapid1 = await clientIFS.SwapId( U1.uri, saveid.rid,  (uri) => {
+      console.log("loading123---", uri);
+    })
 
-    // if (!swapid1) {
-    //   console.log("No response returned from saveid.");
-    //   return;
-    // }
+    if (!swapid1) {
+      console.log("No response returned from saveid.");
+      return;
+    }
 
-    // const swapid2 = U2 ? 
-    // await clientIFS.SwapId( U2.uri, saveid.rid,  (uri) => {
-    //   console.log("loading123---", uri);
-    // }) : 
-    // {
-    //   proxy_url: ""
-    // };
+    const swapid2 = U2 ? 
+    await clientIFS.SwapId( U2.uri, saveid.rid,  (uri) => {
+      console.log("loading123---", uri);
+    }) : 
+    null;
   
-    // const swapid3 = U3 ? 
-    // await clientIFS.SwapId( U3.uri, saveid.rid,  (uri) => {
-    //   console.log("loading123---", uri);
-    // }) : 
-    // {
-    //   proxy_url: ""
-    // };
+    const swapid3 = U3 ? 
+    await clientIFS.SwapId( U3.uri, saveid.rid,  (uri) => {
+      console.log("loading123---", uri);
+    }) : 
+    null;
   
-    // const swapid4 = U4 ? 
-    // await clientIFS.SwapId( U4.uri, saveid.rid,  (uri) => {
-    //   console.log("loading123---", uri);
-    // }) : 
-    // {
-    //   proxy_url: ""
-    // };
+    const swapid4 = U4 ? 
+    await clientIFS.SwapId( U4.uri, saveid.rid,  (uri) => {
+      console.log("loading123---", uri);
+    }) : 
+    null;
 
-    // await clientIFS.delId(saveid.rid)
+    await clientIFS.delId(saveid.rid)
 
-    // console.log("idname", saveid.rid, "has been deleted" );
+    console.log("idname", saveid.rid, "has been deleted" );
 
-    // const urls: any [] = [swapid1.proxy_url, swapid2?.proxy_url, swapid3?.proxy_url, swapid4?.proxy_url]
-
-    // return urls;
-
-    const urls: any [] = [U1.proxy_url, U2?.proxy_url, U3?.proxy_url, U4?.proxy_url]
-
-    clientIFS.Close();
     client.Close();
-    console.log("InsightFaceSwap Client:", clientIFS);
-    console.log("Midjourney Client:", client)
-    return urls;
+    clientIFS.Close();
+
+    if (swapid2 && !swapid3 && !swapid4){
+      const urls: any [] = [swapid1.proxy_url, swapid2.proxy_url];
+      return urls;
+    }
+
+    if (swapid2 && swapid3 && !swapid4){
+      const urls: any [] = [swapid1.proxy_url, swapid2.proxy_url, swapid3.proxy_url];
+      return urls;
+    }
+
+    if (swapid2 && swapid3 && swapid4){
+      const urls: any [] = [swapid1.proxy_url, swapid2.proxy_url, swapid3.proxy_url, swapid4.proxy_url];
+      return urls;
+    }
+
+    const url: any [] = [swapid1.proxy_url];
+    return url;
 }
 
 
@@ -191,9 +178,8 @@ export const handleImageGen = (
   res: Response,
   next: NextFunction
 ) => {
-    
-    console.log("This is the request in handleimageGen", req);
 
+    //console.log("This is the request in handleimageGen", req);
     main(req.body)
     .then((value) => {
         console.log("This is the value", value);

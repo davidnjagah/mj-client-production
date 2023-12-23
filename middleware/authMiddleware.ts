@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken';
+import jwt, { JwtPayload } from 'jsonwebtoken';
 import HttpError from '../models/errorModel';
 import dotenv from 'dotenv';
 dotenv.config();
@@ -13,6 +13,7 @@ interface Request {
 
 interface Response {}
 
+
 interface NextFunction {
     (error?: HttpError): void;
 }
@@ -20,11 +21,10 @@ interface NextFunction {
 const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
     const Authorization = req.headers.Authorization || req.headers.authorization;
     const PUB_KEY = process.env.JWT_SECRET;
-    console.log("This is the PUB KEY", PUB_KEY);
+    const PLATFORMURL = 'http://localhost:3000';
 
     if (Authorization && Authorization.startsWith("Bearer")) {
         const token = Authorization.split(' ')[1];
-        console.log(token);
         jwt.verify(token, PUB_KEY as string, (err, info) => {
             if (err) {
                 console.error("JWT Verification Error:", err);
@@ -32,7 +32,13 @@ const authMiddleware = async (req: Request, res: Response, next: NextFunction) =
             }
 
             req.user = info as jwt.JwtPayload;
-            console.log("Decoded JWT:", info);
+
+            if (req.user.azp !== PLATFORMURL) {
+                console.error("JWT Verification Error: TokenOriginUnknown: jwt is from an unauthorized domain");
+                return next(new HttpError("Unauthorized.", 403));
+            }
+
+            console.log("Decoded JWT:", req.user);
             next();
         });
     } else {
