@@ -1,0 +1,21 @@
+name: CD Pipeline
+
+on:
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types:
+      - completed
+
+jobs:
+
+  build:
+
+    runs-on: self-hosted
+
+    steps:
+    - name: Pull Docker image
+      run: sudo docker pull dnjagah/midjourney-client:latest
+    - name: Delete Old docker container
+      run: sudo docker rm -f midjourney-client-container || true
+    - name: Run Docker Container
+      run: sudo docker run -d -p 5000:5000 --name midjourney-client-container dnjagah/midjourney-client
