@@ -7,7 +7,7 @@ import {
   IFSMessage,
 } from "./interfaces";
 import { formatOptions, sleep } from "./utils";
-import async from "async";
+import * as async from "async";
 
 export class IFSDiscordMessage {
   public config: MJConfig;

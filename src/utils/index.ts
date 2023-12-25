@@ -7,11 +7,14 @@ export const sleep = async (ms: number): Promise<void> =>
 export const random = (min: number, max: number): number =>
   Math.floor(Math.random() * (max - min) + min);
 
+
 const snowflake = new Snowyflake({
-  workerId: 0n,
-  processId: 0n,
+  workerId: BigInt(0),
+  processId: BigInt(0),
   epoch: Epoch.Discord, // BigInt timestamp
 });
+
+
 
 export const nextNonce = (): string => snowflake.nextId().toString();
 
@@ -60,7 +63,7 @@ export const formatInfo = (msg: string) => {
   msg.split("\n").forEach(function (line) {
     const colonIndex = line.indexOf(":");
     if (colonIndex > -1) {
-      const key = line.substring(0, colonIndex).trim().replaceAll("**", "");
+      const key = line.substring(0, colonIndex).trim().replace(/\*\*/g, "");
       const value = line.substring(colonIndex + 1).trim();
       switch (key) {
         case "Subscription":

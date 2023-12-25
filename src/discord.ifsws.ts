@@ -20,7 +20,7 @@ import {
   nextNonce,
   uriToHash,
 } from "./utils";
-import WebSocket from "isomorphic-ws";
+import WebSocket = require('isomorphic-ws');
 export class IFSWsMessage {
   ws: WebSocket;
   private closed = false;
@@ -266,7 +266,7 @@ export class IFSWsMessage {
   private async onMessageDelete(message: any) {
     const { channel_id, id } = message;
     if (channel_id !== this.config.ChannelId) return;
-    for (const [key, value] of this.waitIFSEvents.entries()) {
+    for (const [key, value] of Array.from(this.waitIFSEvents.entries())) {
       if (value.id === id) {
         this.waitIFSEvents.set(key, { ...value, del: true });
       }
@@ -466,7 +466,7 @@ export class IFSWsMessage {
   private getEventByContent(content: string) {
     const prompt = content2prompt(content);
     //fist del message
-    for (const [key, value] of this.waitIFSEvents.entries()) {
+    for (const [key, value] of Array.from(this.waitIFSEvents.entries())) {
       if (
         value.del === true &&
         prompt === content2prompt(value.prompt as string)
@@ -475,7 +475,7 @@ export class IFSWsMessage {
       }
     }
 
-    for (const [key, value] of this.waitIFSEvents.entries()) {
+    for (const [key, value] of Array.from(this.waitIFSEvents.entries())) {
       if (prompt === content2prompt(value.prompt as string)) {
         return value;
       }
@@ -483,14 +483,14 @@ export class IFSWsMessage {
   }
 
   private getEventById(id: string) {
-    for (const [key, value] of this.waitIFSEvents.entries()) {
+    for (const [key, value] of Array.from(this.waitIFSEvents.entries())) {
       if (value.id === id) {
         return value;
       }
     }
   }
   private getEventByNonce(nonce: string) {
-    for (const [key, value] of this.waitIFSEvents.entries()) {
+    for (const [key, value] of Array.from(this.waitIFSEvents.entries())) {
       if (value.nonce === nonce) {
         return value;
       }

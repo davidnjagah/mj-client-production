@@ -12,7 +12,7 @@ import {
 
 import { nextNonce, sleep } from "./utils";
 import { Command } from "./commandsIFS";
-import async from "async";
+import * as async from "async";
 
 export class InsightFaceSwapApi extends Command {
   UpId = Date.now() % 10; // upload id

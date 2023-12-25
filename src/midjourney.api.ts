@@ -12,7 +12,7 @@ import {
 
 import { nextNonce, sleep } from "./utils";
 import { Command } from "./command";
-import async from "async";
+import * as async from "async";
 
 export class MidjourneyApi extends Command {
   UpId = Date.now() % 10; // upload id

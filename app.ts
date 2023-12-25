@@ -1,5 +1,6 @@
-import express, { Express, Request, Response, NextFunction } from 'express';
-import cors from 'cors';
+import * as express from 'express';
+import { Express, Request, Response, NextFunction }  from 'express';
+import * as cors from 'cors';
 import authMiddleware from './middleware/authMiddleware';
 import { handleImageGen } from './controllers/processImageController';
 import { paystackWebhook } from './controllers/paystack-webhook';

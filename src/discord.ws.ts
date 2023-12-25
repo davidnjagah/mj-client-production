@@ -22,7 +22,7 @@ import {
   uriToHash,
 } from "./utils";
 import { VerifyHuman } from "./verify.human";
-import WebSocket from "isomorphic-ws";
+import WebSocket = require('isomorphic-ws');
 export class WsMessage {
   ws: WebSocket;
   private closed = false;
@@ -294,7 +294,7 @@ export class WsMessage {
   private async onMessageDelete(message: any) {
     const { channel_id, id } = message;
     if (channel_id !== this.config.ChannelId) return;
-    for (const [key, value] of this.waitMjEvents.entries()) {
+    for (const [key, value] of Array.from(this.waitMjEvents.entries())) {
       if (value.id === id) {
         this.waitMjEvents.set(key, { ...value, del: true });
       }
@@ -471,7 +471,7 @@ export class WsMessage {
   private getEventByContent(content: string) {
     const prompt = content2prompt(content);
     //fist del message
-    for (const [key, value] of this.waitMjEvents.entries()) {
+    for (const [key, value] of Array.from(this.waitMjEvents.entries())) {
       if (
         value.del === true &&
         prompt === content2prompt(value.prompt as string)
@@ -480,7 +480,7 @@ export class WsMessage {
       }
     }
 
-    for (const [key, value] of this.waitMjEvents.entries()) {
+    for (const [key, value] of Array.from(this.waitMjEvents.entries())) {
       if (prompt === content2prompt(value.prompt as string)) {
         return value;
       }
@@ -488,14 +488,14 @@ export class WsMessage {
   }
 
   private getEventById(id: string) {
-    for (const [key, value] of this.waitMjEvents.entries()) {
+    for (const [key, value] of Array.from(this.waitMjEvents.entries())) {
       if (value.id === id) {
         return value;
       }
     }
   }
   private getEventByNonce(nonce: string) {
-    for (const [key, value] of this.waitMjEvents.entries()) {
+    for (const [key, value] of Array.from(this.waitMjEvents.entries())) {
       if (value.nonce === nonce) {
         return value;
       }

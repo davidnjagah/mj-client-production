@@ -1,4 +1,4 @@
-import WebSocket from "isomorphic-ws";
+import WebSocket = require('isomorphic-ws');
 
 export type FetchFn = typeof fetch;
 export type WebSocketCl = typeof WebSocket;
